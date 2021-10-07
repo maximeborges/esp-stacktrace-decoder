@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+    <meta charset="utf-8">
+    <title>ESP Stack trace decoder</title>
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1.3.3/css/pico.min-dist.css">
+    <style>
+      hgroup {
+        margin: var(--typography-spacing-vertical) 0;
+      }
+      main {
+        margin-top: 0;
+      }
+      h3 {
+        font-size: 1.4rem;
+        --typography-spacing-vertical: 1rem;
+        display: inline-block;
+      }
+      input {
+        display: inline-block !important;
+        width: auto !important;
+      }
+      body>footer, body>header, body>main {
+        padding: 0 var(--spacing);
+      }
+      section {
+        margin-bottom: 0;
+      }
+      textarea {
+        padding: 5px;
+        font-size: 0.75rem;
+        font-family: monospace;
+      }
+      textarea[disabled] {
+        cursor: default;
+        --background-color: var(--form-element-background-color);
+        --border-color: var(--form-element-border-color);
+        opacity: var(--form-element-opacity);
+      }
+      ul {
+        padding-left: 0;
+      }
+      ul li {
+        list-style: none;
+        word-break: break-all;
+        font-size: 0.7rem;
+        margin-bottom: 0;
+      }
+    </style>
+  </head>
+
+  <body>
+    <header>
+      <hgroup>
+        <h1>ESP Stack Trace Decoder</h1>
+        <h2>An online ESP stack trace decoder that runs in your browser</h2>
+      </hgroup>
+    </header>
+    <main>
+      <section>
+        <h3><label for="file-selector">.elf binary:</label></h3>
+        <input type="file" id="file-selector" />
+        <br>
+        <h3>Stack trace:</h3>
+        <textarea id="stacktrace" width="100%" rows="10"></textarea>
+        <button aria-busy="true" id="run-button" disabled>Loading...</button>
+      </section>
+
+      <section id="output" hidden>
+        <h3>Output:</h3>
+        <ul id="decoded-list"></ul>
+      </section>
+    </main>
+
+    <script type="module">
+      // Load the WASM lib
+      import init, {decode as esp_exception_decode} from "./esp_exception_decoder_rs.js";
+
+      // Get some references to the DOM
+      const file_selector = document.querySelector('#file-selector');
+      const stacktrace = document.querySelector('#stacktrace');
+      const run_button = document.querySelector('#run-button');
+
+      const section_output = document.querySelector('#output');
+      const decoded_list = document.querySelector('#decoded-list');
+
+      (async function run() {
+        await init();
+
+        // Update the button state
+        run_button.textContent = 'Run!';
+        run_button.removeAttribute('disabled');
+        run_button.setAttribute('aria-busy', 'disabled');
+        
+        // Setup the click event
+        run_button.addEventListener('click', (e) => {
+          // Get the file from the input box
+          const file = file_selector.files[0];
+          if (!file) return;
+
+          // Prepare callback for reading the file
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            // Convert the file content to Uint8Array for the decode function (expecting &[u8] in Rust)
+            const elf_bytes = new Uint8Array(e.target.result);
+            const decoded_addresses = esp_exception_decode(elf_bytes, stacktrace.value);
+            // Unhide and update the decoded text area with the result from decode call
+            section_output.removeAttribute('hidden');
+            decoded_list.textContent = '';
+            decoded_addresses.forEach((e) => {
+              const entry_elm = document.createElement('li');
+              entry_elm.innerHTML = `0x${e.address.toString(16)}: <strong>${e.function_name}</strong> at <mark>${e.location}</mark>`;
+              decoded_list.appendChild(entry_elm);
+            });
+          };
+
+          // Read the file
+          reader.readAsArrayBuffer(file);
+        });
+      })();
+    </script>
+  </body>
+</html>

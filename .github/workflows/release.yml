@@ -1,0 +1,63 @@
+name: Build and Deploy
+
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  build-linux:
+    name: Build and deploy Linux binary
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: x86_64-unknown-linux-gnu
+      - uses: Swatinem/rust-cache@v1
+      - uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release --target x86_64-unknown-linux-gnu
+      - uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file : target/x86_64-unknown-linux-gnu/release/esp_exception_decoder
+          asset_name: esp_exception_decoder
+          tag: ${{ github.ref }}
+
+  build-wasm:
+    name: Build and deploy WASM package
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v1
+
+      - uses: jetli/wasm-pack-action@v0.3.0
+      - name: Run wasm-pack
+        run: wasm-pack build --target web --out-dir web/
+      - name: Make an archive for web deployment
+        run: tar czf esp_exception_decoder_wasm.tar.gz -C web index.html esp_exception_decoder_rs.js esp_exception_decoder_rs_bg.wasm
+      - uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: esp_exception_decoder_wasm.tar.gz
+          asset_name: esp_exception_decoder_wasm.tar.gz
+          tag: ${{ github.ref }}
+
+      - name: Copy files for web deployment
+        run: mkdir -p public; cp web/index.html web/esp_exception_decoder_rs.js web/esp_exception_decoder_rs_bg.wasm public/
+      - uses: crazy-max/ghaction-github-pages@v2
+        with:
+          target_branch: gh-pages
+          build_dir: public
+          verbose: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
