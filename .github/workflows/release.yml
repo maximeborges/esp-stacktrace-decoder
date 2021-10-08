@@ -1,35 +1,127 @@
-name: Build and Deploy
+name: Release
 
 on:
   push:
     tags:
-      - '*'
+      - v*
+
+env:
+  CARGO_TERM_COLOR: always
 
 jobs:
-  build-linux:
-    name: Build and deploy Linux binary
-    runs-on: ubuntu-latest
-
+  publish-bin-to-github:
+    name: Publish bin tool to Github
+    runs-on: ${{matrix.os}}
+    strategy:
+      matrix:
+        include:
+        - build: linux
+          os: ubuntu-latest
+          rust: stable
+          target: x86_64-unknown-linux-musl
+          cross: false
+          bin_suffix: x86_64-linux
+        - build: arm-v7
+          os: ubuntu-latest
+          rust: stable
+          target: armv7-unknown-linux-gnueabihf
+          linker: gcc-arm-linux-gnueabihf
+          cross: true
+          bin_suffix: arm-v7-linux
+        - build: aarch64
+          os: ubuntu-latest
+          rust: stable
+          target: aarch64-unknown-linux-gnu
+          linker: gcc-aarch64-linux-gnu
+          cross: true
+          bin_suffix: aarch64-linux
+        - build: macos
+          os: macos-latest
+          rust: stable
+          target: x86_64-apple-darwin
+          cross: false
+          bin_suffix: macos
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          target: x86_64-unknown-linux-gnu
-      - uses: Swatinem/rust-cache@v1
-      - uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --release --target x86_64-unknown-linux-gnu
-      - uses: svenstaro/upload-release-action@v2
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file : target/x86_64-unknown-linux-gnu/release/esp_exception_decoder
-          asset_name: esp_exception_decoder
-          tag: ${{ github.ref }}
+    - name: Checkout repository
+      uses: actions/checkout@v2
+      with:
+        fetch-depth: 1
 
-  build-wasm:
-    name: Build and deploy WASM package
+    - name: Cache
+      uses: actions/cache@v2
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          ~/.rustup
+          target
+        key: ${{ runner.os }}-${{ matrix.rust }}
+
+    - name: Install Linker
+      if: matrix.cross
+      run: |
+        sudo apt update
+        sudo apt install ${{ matrix.linker }}
+        cat .cargo/config.github >> .cargo/config
+    - name: Install Rust
+      run: |
+        rustup install ${{ matrix.rust }}
+        rustup target add ${{ matrix.target }}
+        rustup show
+    - name: Build
+      run: cargo build --release --target ${{ matrix.target }}
+    - name: Copy and rename binary
+      run: cp target/${{ matrix.target }}/release/esp_exception_decoder esp_exception_decoder_${{ matrix.bin_suffix }}
+
+    - name: Release
+      uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+        files: esp_exception_decoder_${{ matrix.bin_suffix }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish-exe-to-github:
+    name: Publish exe tool to Github
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+      with:
+        fetch-depth: 1
+
+    - name: Cache
+      uses: actions/cache@v2
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          ~/.rustup
+          target
+        key: ${{ runner.os }}-stable
+
+    - name: Install Linker
+      run: |
+        sudo apt update
+        sudo apt install mingw-w64
+    - name: Install Rust
+      run: |
+        rustup install stable
+        rustup target add x86_64-pc-windows-gnu
+        rustup show
+    - name: Build
+      run: cargo build --release --target x86_64-pc-windows-gnu
+
+    - name: Release
+      uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+        files: target/x86_64-pc-windows-gnu/release/esp_exception_decoder.exe
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish-web-to-github:
+    name: Publish web tool to GitHub
     runs-on: ubuntu-latest
 
     steps:
@@ -45,14 +137,16 @@ jobs:
         run: wasm-pack build --target web --out-dir web/
       - name: Make an archive for web deployment
         run: tar czf esp_exception_decoder_wasm.tar.gz -C web index.html esp_exception_decoder_rs.js esp_exception_decoder_rs_bg.wasm
-      - uses: svenstaro/upload-release-action@v2
+      
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
         with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: esp_exception_decoder_wasm.tar.gz
-          asset_name: esp_exception_decoder_wasm.tar.gz
-          tag: ${{ github.ref }}
-
-      - name: Copy files for web deployment
+          files: esp_exception_decoder_wasm.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Copy files for GitHub Pages deployment
         run: mkdir -p public; cp web/index.html web/esp_exception_decoder_rs.js web/esp_exception_decoder_rs_bg.wasm public/
       - uses: crazy-max/ghaction-github-pages@v2
         with:
