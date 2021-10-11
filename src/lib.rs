@@ -13,10 +13,10 @@ fn load_file_section<'input, 'arena, Endian: gimli::Endianity>(
     file: &object::File<'input>,
     endian: Endian,
     arena_data: &'arena Arena<Cow<'input, [u8]>>,
-) -> Result<gimli::EndianSlice<'arena, Endian>, ()> {
+) -> Result<gimli::EndianSlice<'arena, Endian>, object::Error> {
     let name = id.name();
     match file.section_by_name(name) {
-        Some(section) => match section.uncompressed_data().unwrap() {
+        Some(section) => match section.uncompressed_data()? {
             Cow::Borrowed(b) => Ok(gimli::EndianSlice::new(b, endian)),
             Cow::Owned(b) => Ok(gimli::EndianSlice::new(arena_data.alloc(b.into()), endian)),
         },
@@ -66,11 +66,26 @@ type ReturnType = Vec<DecodedAddress>;
 
 #[cfg_attr(target_family = "wasm", wasm_bindgen)]
 pub fn decode(bin: &[u8], dump: &str) -> ReturnType {
+    // Prepare vector for output data
+    let mut decoded_data = Vec::<DecodedAddress>::new();
+    #[cfg(target_family = "wasm")]
+    let format_return = |decoded_data: Vec::<DecodedAddress>| {
+        decoded_data.into_iter().map(JsValue::from).collect()
+    };
+    #[cfg(not(target_family = "wasm"))]
+    let format_return = |decoded_data| {
+        decoded_data
+    };
+
     // Used to keep slices from uncompressed section data
     let arena_data = Arena::new();
 
     // Parse the binary as an object file
-    let object = &object::File::parse(bin).unwrap();
+    let object = &object::File::parse(bin);
+    let object = match object {
+        Ok(object) => object,
+        Err(_) => return format_return(decoded_data),
+    };
     let endianness = match object.endianness() {
         Endianness::Little => gimli::RunTimeEndian::Little,
         Endianness::Big => gimli::RunTimeEndian::Big
@@ -82,35 +97,59 @@ pub fn decode(bin: &[u8], dump: &str) -> ReturnType {
     };
 
     // Load the Dwarf sections
-    let dwarf = gimli::Dwarf::load(&mut load_section).unwrap();
-    let ctx = Context::from_dwarf(dwarf).unwrap();
+    let dwarf = gimli::Dwarf::load(&mut load_section);
+    let dwarf = match dwarf {
+        Ok(dwarf) => dwarf,
+        Err(_) => return format_return(decoded_data),
+    };
+    let ctx = Context::from_dwarf(dwarf);
+    let ctx = match ctx {
+        Ok(ctx) => ctx,
+        Err(_) => return format_return(decoded_data),
+    };
 
-    // Prepare vector for output data
-    let mut decoded_data = Vec::<DecodedAddress>::new();
-
+    // Match everything that looks like a program address
     let re = Regex::new(r"(40[0-9a-fA-F]{6})\b").unwrap();
     for cap in re.captures_iter(dump) {
-        let addr = u64::from_str_radix(&cap[0], 16).unwrap();
-        let mut frames = ctx.find_frames(addr).unwrap().enumerate();
+        let address = u64::from_str_radix(&cap[0], 16).unwrap();
+        // Look for frame that contains the address
+        let mut frames = match ctx.find_frames(address) {
+            Ok(frames) => frames.enumerate(),
+            Err(_) => continue,
+        };
         while let Some((_, frame)) = frames.next().unwrap() {
-            if let Some(func) = frame.function {
-                let location = match frame.location {
-                    Some(location) => format!("{}:{}", location.file.unwrap(), location.line.unwrap()),
-                    None => "?:?".to_string(),
-                };
-
-                let decoded = DecodedAddress {
-                    address: addr,
-                    function_name: String::from(addr2line::demangle_auto(func.raw_name().unwrap(), func.language)),
-                    location: location,
-                };
-                decoded_data.push(decoded);
+            // Skip if it doesn't point to a function
+            if frame.function.is_none() {
+                continue;
             }
+            // Extract function name
+            let func = frame.function.unwrap();
+            let function_name = match func.raw_name() {
+                Ok(function_name) => String::from(addr2line::demangle_auto(function_name, func.language)),
+                Err(_) => "unknown_func".to_string(),
+            };
+            // Extract location
+            let location = match frame.location {
+                Some(func_location) => {
+                    let file = func_location.file.unwrap_or("?");
+                    let line = match func_location.line {
+                        Some(line) => line.to_string(),
+                        None => "?".to_string(),
+                    };
+                    format!("{}:{}", file, line)
+                },
+                None => "?:?".to_string(),
+            };
+
+            // Append the decoded address
+            let decoded = DecodedAddress {
+                address,
+                function_name,
+                location,
+            };
+            decoded_data.push(decoded);
         }
     }
-    #[cfg(target_family = "wasm")]
-    {decoded_data.into_iter().map(JsValue::from).collect()}
-    
-    #[cfg(not(target_family = "wasm"))]
-    {decoded_data}
+
+    format_return(decoded_data)
 }
