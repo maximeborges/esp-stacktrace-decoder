@@ -109,7 +109,7 @@ pub fn decode(bin: &[u8], dump: &str) -> ReturnType {
     };
 
     // Match everything that looks like a program address
-    let re = Regex::new(r"(40[0-9a-fA-F]{6})\b").unwrap();
+    let re = Regex::new(r"([0-9a-fA-F]{8})\b").unwrap();
     for cap in re.captures_iter(dump) {
         let address = u64::from_str_radix(&cap[0], 16).unwrap();
         // Look for frame that contains the address
