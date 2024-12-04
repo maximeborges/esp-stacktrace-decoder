@@ -7,6 +7,10 @@ on:
 env:
   CARGO_TERM_COLOR: always
 
+
+permissions:
+  contents: write
+
 jobs:
   publish-bin-to-github:
     name: Publish bin tool to Github
