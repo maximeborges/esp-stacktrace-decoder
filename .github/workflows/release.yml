@@ -1,9 +1,8 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - v*
+  release:
+    types: [published]
 
 env:
   CARGO_TERM_COLOR: always
@@ -43,12 +42,12 @@ jobs:
           bin_suffix: macos
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4.2.2
       with:
         fetch-depth: 1
 
     - name: Cache
-      uses: actions/cache@v2
+      uses: actions/cache@v4.1.2
       with:
         path: |
           ~/.cargo/registry
@@ -74,24 +73,21 @@ jobs:
       run: cp target/${{ matrix.target }}/release/esp_exception_decoder esp_exception_decoder_${{ matrix.bin_suffix }}
 
     - name: Release
-      uses: softprops/action-gh-release@v1
-      if: startsWith(github.ref, 'refs/tags/')
+      uses: softprops/action-gh-release@v2.1.0
       with:
         files: esp_exception_decoder_${{ matrix.bin_suffix }}
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   publish-exe-to-github:
     name: Publish exe tool to Github
     runs-on: ubuntu-latest
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4.2.2
       with:
         fetch-depth: 1
 
     - name: Cache
-      uses: actions/cache@v2
+      uses: actions/cache@v4.1.2
       with:
         path: |
           ~/.cargo/registry
@@ -113,19 +109,16 @@ jobs:
       run: cargo build --release --target x86_64-pc-windows-gnu
 
     - name: Release
-      uses: softprops/action-gh-release@v1
-      if: startsWith(github.ref, 'refs/tags/')
+      uses: softprops/action-gh-release@v2.1.0
       with:
         files: target/x86_64-pc-windows-gnu/release/esp_exception_decoder.exe
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   publish-web-to-github:
     name: Publish web tool to GitHub
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4.2.2
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
@@ -137,21 +130,21 @@ jobs:
         run: wasm-pack build --target web --out-dir web/
       - name: Make an archive for web deployment
         run: tar czf esp_exception_decoder_wasm.tar.gz -C web index.html esp_exception_decoder_rs.js esp_exception_decoder_rs_bg.wasm
-      
+
       - name: Release
-        uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2.1.0
         with:
           files: esp_exception_decoder_wasm.tar.gz
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      
+
       - name: Copy files for GitHub Pages deployment
         run: mkdir -p public; cp web/index.html web/esp_exception_decoder_rs.js web/esp_exception_decoder_rs_bg.wasm public/
-      - uses: crazy-max/ghaction-github-pages@v2
+
+      - uses: actions/upload-pages-artifact@v3.0.1
         with:
-          target_branch: gh-pages
-          build_dir: public
-          verbose: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          path: public
+          retention-days: 1
+      - name: Setup Pages
+        uses: actions/configure-pages@v5.0.0
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4.0.5
