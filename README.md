@@ -4,10 +4,6 @@ A Rust ESP stack trace decoder that can also **runs in your browser** thanks to 
 
 It is composed of a ⌨️ Rust library, a 💻 Rust command line tool, and a 🌏 WebAssembly library with a HTML interface.
 
-### ESPHome fork
-
-This repo is a fork of the original located at [https://github.com/maximeborges/esp-stacktrace-decoder](https://github.com/maximeborges/esp-stacktrace-decoder).
-
 ### Web tool
 
 The web tool is hosted on [Github Pages here](https://esphome.github.io/esp-stacktrace-decoder/).
