@@ -6,7 +6,7 @@ It is composed of a ⌨️ Rust library, a 💻 Rust command line tool, and a �
 
 ### Web tool
 
-The web tool is hosted on [Github Pages here](https://maximeborges.github.io/esp-stacktrace-decoder/).
+The web tool is hosted on [Github Pages here](https://esphome.github.io/esp-stacktrace-decoder/).
 
 It is taking your `.elf` firmware and the stack trace, and outputs the list of functions and their locations, without uploading any of your data anywhere.
 
@@ -14,7 +14,7 @@ Everything run in your browser, ✨just like that✨.
 
 ![screenshot](https://user-images.githubusercontent.com/159235/136428494-4fdb6c69-74ca-42ab-8bf7-e26d1d625a28.png)
 
-You can also deploy it yourself by hosting the content of the pre-compiled package `esp_exception_decoder_wasm.tar.gz` on the [release page](https://github.com/maximeborges/esp-stacktrace-decoder/releases), or by compiling the library in WebAssembly using `wasm-pack`:
+You can also deploy it yourself by hosting the content of the pre-compiled package `esp_exception_decoder_wasm.tar.gz` on the [release page](https://github.com/esphome/esp-stacktrace-decoder/releases), or by compiling the library in WebAssembly using `wasm-pack`:
 
     # Install the Rust toolchain by following the latest instructions from here: https://www.rust-lang.org/tools/install
     # Install wasm-pack by following the latest instructions from here: https://rustwasm.github.io/wasm-pack/installer
@@ -35,7 +35,7 @@ A bit more boring command line tool is also available:
 
 ![esp_exception_decoder_rs_cli](https://user-images.githubusercontent.com/159235/136429806-48b82e04-cc55-4dda-84de-d143001165c3.png)
 
-Get the latest binary release here: [Releases](https://github.com/maximeborges/esp-stacktrace-decoder/releases)
+Get the latest binary release here: [Releases](https://github.com/esphome/esp-stacktrace-decoder/releases)
 
 Or build it yourself: 
 
