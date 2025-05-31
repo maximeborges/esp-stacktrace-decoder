@@ -133,7 +133,7 @@ jobs:
           target: wasm32-unknown-unknown
       - uses: Swatinem/rust-cache@v1
 
-      - uses: jetli/wasm-pack-action@v0.3.0
+      - uses: jetli/wasm-pack-action@v0.4.0
       - name: Run wasm-pack
         run: wasm-pack build --target web --out-dir web/
       - name: Make an archive for web deployment
