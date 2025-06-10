@@ -1,0 +1,41 @@
+
+name: Release Drafter
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  update_release_draft:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: release-drafter/release-drafter@v6
+        id: release-draft
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Update version number in Cargo.toml
+      - uses: actions/checkout@v4
+      - name: Calculate version
+        id: version
+        run: |
+          tag="${{ steps.release-draft.outputs.tag_name }}"
+          echo "version=${tag:1}" >> $GITHUB_OUTPUT
+
+      - name: Set Cargo.toml version
+        run: |
+          sed -i "s/version = .*/version = \"${{ steps.version.outputs.version }}\"/g" Cargo.toml
+      # github actions email from here: https://github.community/t/github-actions-bot-email-address/17204
+      - name: Commit changes
+        run: |
+          if ! git diff --quiet; then
+            git config --global user.name "github-actions[bot]"
+            git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -am "Bump version to ${{ steps.version.outputs.version }}"
+            git push
+          fi
