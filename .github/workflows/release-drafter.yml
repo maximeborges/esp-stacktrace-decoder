@@ -19,7 +19,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # Update version number in setup.py
+      # Update version number in Cargo.toml
       - uses: actions/checkout@v4
       - name: Calculate version
         id: version
@@ -27,7 +27,7 @@ jobs:
           tag="${{ steps.release-draft.outputs.tag_name }}"
           echo "version=${tag:1}" >> $GITHUB_OUTPUT
 
-      - name: Set setup.py version
+      - name: Set Cargo.toml version
         run: |
           sed -i "s/version = .*/version = \"${{ steps.version.outputs.version }}\"/g" Cargo.toml
       # github actions email from here: https://github.community/t/github-actions-bot-email-address/17204
