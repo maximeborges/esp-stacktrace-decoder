@@ -1,8 +1,11 @@
 [package]
 name = "esp-exception-decoder"
+description = "An ESP stack trace decoder"
 version = "1.3.2"
 edition = "2018"
 authors = ["Maxime Borges <contact@maximeborg.es>"]
+repository = "https://github.com/esphome/esp-stacktrace-decoder"
+license = "MIT"
 
 [lib]
 name = "esp_exception_decoder_rs"
