@@ -74,12 +74,12 @@ jobs:
     - name: Build
       run: cargo build --release --target ${{ matrix.target }}
     - name: Copy and rename binary
-      run: cp target/${{ matrix.target }}/release/esp_exception_decoder esp_exception_decoder_${{ matrix.bin_suffix }}
+      run: cp target/${{ matrix.target }}/release/esp_stacktrace_decoder esp_stacktrace_decoder_${{ matrix.bin_suffix }}
 
     - name: Release
       uses: softprops/action-gh-release@v2.3.2
       with:
-        files: esp_exception_decoder_${{ matrix.bin_suffix }}
+        files: esp_stacktrace_decoder_${{ matrix.bin_suffix }}
 
   publish-exe-to-github:
     name: Publish exe tool to Github
@@ -115,7 +115,7 @@ jobs:
     - name: Release
       uses: softprops/action-gh-release@v2.3.2
       with:
-        files: target/x86_64-pc-windows-gnu/release/esp_exception_decoder.exe
+        files: target/x86_64-pc-windows-gnu/release/esp_stacktrace_decoder.exe
 
   publish-web-to-github:
     name: Publish web tool to GitHub
@@ -137,15 +137,15 @@ jobs:
       - name: Run wasm-pack
         run: wasm-pack build --target web --out-dir web/
       - name: Make an archive for web deployment
-        run: tar czf esp_exception_decoder_wasm.tar.gz -C web index.html esp_exception_decoder_rs.js esp_exception_decoder_rs_bg.wasm
+        run: tar czf esp_stacktrace_decoder_wasm.tar.gz -C web index.html esp_stacktrace_decoder_rs.js esp_stacktrace_decoder_rs_bg.wasm
 
       - name: Release
         uses: softprops/action-gh-release@v2.3.2
         with:
-          files: esp_exception_decoder_wasm.tar.gz
+          files: esp_stacktrace_decoder_wasm.tar.gz
 
       - name: Copy files for GitHub Pages deployment
-        run: mkdir -p public; cp web/index.html web/esp_exception_decoder_rs.js web/esp_exception_decoder_rs_bg.wasm public/
+        run: mkdir -p public; cp web/index.html web/esp_stacktrace_decoder_rs.js web/esp_stacktrace_decoder_rs_bg.wasm public/
 
       - uses: actions/upload-pages-artifact@v3.0.1
         with:
