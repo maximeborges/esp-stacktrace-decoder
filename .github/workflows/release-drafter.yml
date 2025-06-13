@@ -30,6 +30,7 @@ jobs:
       - name: Set Cargo.toml version
         run: |
           sed -i "s/^version = .*/version = \"${{ steps.version.outputs.version }}\"/g" Cargo.toml
+          sed -i "s/.version\(".*\)/.version(\"${{ steps.version.outputs.version }}\")/g" src/bin.rs
       # github actions email from here: https://github.community/t/github-actions-bot-email-address/17204
       - name: Commit changes
         run: |
