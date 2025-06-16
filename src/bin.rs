@@ -2,7 +2,7 @@ use std::fs::File;
 use std::io::{Read, Stdin};
 
 use clap::{App, Arg};
-use esp_exception_decoder_rs::decode;
+use esp_stacktrace_decoder_rs::decode;
 use colored::*;
 
 enum DumpSource<'a> {
@@ -12,8 +12,8 @@ enum DumpSource<'a> {
 
 fn main() {
     let matches = App::new("hardliner")
-        .version("0.1")
-        .about("ESP8266 exception decoder")
+        .version("1.3.2")
+        .about("ESP stacktrace decoder")
         .arg(
             Arg::with_name("elf")
                 .value_name("binary_file")
@@ -31,7 +31,7 @@ fn main() {
 
     let binary_file = matches.value_of("elf").unwrap();
     let mut binary_file = File::open(binary_file).unwrap();
-    let mut binary_buf = Vec::<u8>::new(); 
+    let mut binary_buf = Vec::<u8>::new();
     let _ = binary_file.read_to_end(&mut binary_buf);
 
     let stdin = std::io::stdin();
@@ -57,8 +57,8 @@ fn main() {
 
     let decoded_addresses = decode(&binary_buf, &stack_trace);
     for address in decoded_addresses {
-        println!("0x{:04x}: {} at {}", 
-            address.address, 
+        println!("0x{:04x}: {} at {}",
+            address.address,
             address.function_name.bold(),
             address.location.blue()
         );

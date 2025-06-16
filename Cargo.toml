@@ -1,16 +1,19 @@
 [package]
-name = "esp-exception-decoder"
+name = "esp-stacktrace-decoder"
+description = "An ESP stack trace decoder"
 version = "1.3.2"
 edition = "2018"
 authors = ["Maxime Borges <contact@maximeborg.es>"]
+repository = "https://github.com/esphome/esp-stacktrace-decoder"
+license = "MIT"
 
 [lib]
-name = "esp_exception_decoder_rs"
+name = "esp_stacktrace_decoder_rs"
 path = "src/lib.rs"
 crate-type = ["cdylib", "rlib"]
 
 [[bin]]
-name = "esp_exception_decoder"
+name = "esp_stacktrace_decoder"
 path = "src/bin.rs"
 
 [dependencies]
