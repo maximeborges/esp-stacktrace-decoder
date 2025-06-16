@@ -75,7 +75,7 @@
 
     <script type="module">
       // Load the WASM lib
-      import init, {decode as esp_exception_decode} from "./esp_exception_decoder_rs.js";
+      import init, {decode as esp_stacktrace_decode} from "./esp_stacktrace_decoder_rs.js";
 
       // Get some references to the DOM
       const file_selector = document.querySelector('#file-selector');
@@ -104,7 +104,7 @@
           reader.onload = (e) => {
             // Convert the file content to Uint8Array for the decode function (expecting &[u8] in Rust)
             const elf_bytes = new Uint8Array(e.target.result);
-            const decoded_addresses = esp_exception_decode(elf_bytes, stacktrace.value);
+            const decoded_addresses = esp_stacktrace_decode(elf_bytes, stacktrace.value);
             // Unhide and update the decoded text area with the result from decode call
             section_output.removeAttribute('hidden');
             decoded_list.textContent = '';
