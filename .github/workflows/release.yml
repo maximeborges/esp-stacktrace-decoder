@@ -3,6 +3,7 @@ name: Release
 on:
   release:
     types: [published]
+  pull_request:
 
 env:
   CARGO_TERM_COLOR: always
@@ -12,10 +13,11 @@ permissions:
   contents: write
 
 jobs:
-  publish-bin-to-github:
-    name: Publish bin tool to Github
+  build-bin:
+    name: Build bin tool
     runs-on: ${{matrix.os}}
     strategy:
+      max-parallel: 2
       matrix:
         include:
         - build: linux
@@ -66,23 +68,28 @@ jobs:
         sudo apt update
         sudo apt install ${{ matrix.linker }}
         cat .cargo/config.github >> .cargo/config
+
     - name: Install Rust
       run: |
         rustup install ${{ matrix.rust }}
         rustup target add ${{ matrix.target }}
         rustup show
+
     - name: Build
       run: cargo build --release --target ${{ matrix.target }}
+
     - name: Copy and rename binary
+      if: github.event_name == 'release'
       run: cp target/${{ matrix.target }}/release/esp_stacktrace_decoder esp_stacktrace_decoder_${{ matrix.bin_suffix }}
 
-    - name: Release
+    - name: Upload to GitHub Release
+      if: github.event_name == 'release'
       uses: softprops/action-gh-release@v2.3.2
       with:
         files: esp_stacktrace_decoder_${{ matrix.bin_suffix }}
 
-  publish-exe-to-github:
-    name: Publish exe tool to Github
+  build-exe:
+    name: Build exe tool
     runs-on: ubuntu-latest
     steps:
     - name: Checkout repository
@@ -104,55 +111,77 @@ jobs:
       run: |
         sudo apt update
         sudo apt install mingw-w64
+
     - name: Install Rust
       run: |
         rustup install stable
         rustup target add x86_64-pc-windows-gnu
         rustup show
+
     - name: Build
       run: cargo build --release --target x86_64-pc-windows-gnu
 
-    - name: Release
+    - name: Upload to GitHub Release
+      if: github.event_name == 'release'
       uses: softprops/action-gh-release@v2.3.2
       with:
         files: target/x86_64-pc-windows-gnu/release/esp_stacktrace_decoder.exe
 
-  publish-web-to-github:
-    name: Publish web tool to GitHub
+  build-web:
+    name: Build web tool
     runs-on: ubuntu-latest
-    permissions:
-      pages: write
-      id-token: write
-      contents: write
 
     steps:
       - uses: actions/checkout@v4.2.2
+
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
           target: wasm32-unknown-unknown
+
       - uses: Swatinem/rust-cache@v2
 
       - uses: jetli/wasm-pack-action@v0.4.0
+
       - name: Run wasm-pack
         run: wasm-pack build --target web --out-dir web/
+
       - name: Make an archive for web deployment
+        if: github.event_name == 'release'
         run: tar czf esp_stacktrace_decoder_wasm.tar.gz -C web index.html esp_stacktrace_decoder_rs.js esp_stacktrace_decoder_rs_bg.wasm
 
-      - name: Release
+      - name: Upload to GitHub Release
+        if: github.event_name == 'release'
         uses: softprops/action-gh-release@v2.3.2
         with:
           files: esp_stacktrace_decoder_wasm.tar.gz
 
       - name: Copy files for GitHub Pages deployment
+        if: github.event_name == 'release'
         run: mkdir -p public; cp web/index.html web/esp_stacktrace_decoder_rs.js web/esp_stacktrace_decoder_rs_bg.wasm public/
 
       - uses: actions/upload-pages-artifact@v3.0.1
+        if: github.event_name == 'release'
         with:
           path: public
           retention-days: 1
+
+  deploy-pages:
+    name: Deploy to GitHub Pages
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+      contents: write
+    if: github.event_name == 'release'
+    needs:
+      - build-web
+    steps:
       - name: Setup Pages
+        if: github.event_name == 'release'
         uses: actions/configure-pages@v5.0.0
+
       - name: Deploy to GitHub Pages
+        if: github.event_name == 'release'
         id: deployment
         uses: actions/deploy-pages@v4.0.5
