@@ -13,8 +13,8 @@ permissions:
   contents: write
 
 jobs:
-  publish-bin-to-github:
-    name: Publish bin tool to Github
+  build-bin:
+    name: Build bin tool
     runs-on: ${{matrix.os}}
     strategy:
       matrix:
@@ -81,14 +81,14 @@ jobs:
       if: github.event_name == 'release'
       run: cp target/${{ matrix.target }}/release/esp_stacktrace_decoder esp_stacktrace_decoder_${{ matrix.bin_suffix }}
 
-    - name: Release
+    - name: Upload to GitHub Release
       if: github.event_name == 'release'
       uses: softprops/action-gh-release@v2.3.2
       with:
         files: esp_stacktrace_decoder_${{ matrix.bin_suffix }}
 
-  publish-exe-to-github:
-    name: Publish exe tool to Github
+  build-exe:
+    name: Build exe tool
     runs-on: ubuntu-latest
     steps:
     - name: Checkout repository
@@ -120,19 +120,15 @@ jobs:
     - name: Build
       run: cargo build --release --target x86_64-pc-windows-gnu
 
-    - name: Release
+    - name: Upload to GitHub Release
       if: github.event_name == 'release'
       uses: softprops/action-gh-release@v2.3.2
       with:
         files: target/x86_64-pc-windows-gnu/release/esp_stacktrace_decoder.exe
 
-  publish-web-to-github:
-    name: Publish web tool to GitHub
+  build-web:
+    name: Build web tool
     runs-on: ubuntu-latest
-    permissions:
-      pages: write
-      id-token: write
-      contents: write
 
     steps:
       - uses: actions/checkout@v4.2.2
@@ -153,7 +149,7 @@ jobs:
         if: github.event_name == 'release'
         run: tar czf esp_stacktrace_decoder_wasm.tar.gz -C web index.html esp_stacktrace_decoder_rs.js esp_stacktrace_decoder_rs_bg.wasm
 
-      - name: Release
+      - name: Upload to GitHub Release
         if: github.event_name == 'release'
         uses: softprops/action-gh-release@v2.3.2
         with:
@@ -169,6 +165,17 @@ jobs:
           path: public
           retention-days: 1
 
+  deploy-pages:
+    name: Deploy to GitHub Pages
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+      contents: write
+    if: github.event_name == 'release'
+    needs:
+      - build-web
+    steps:
       - name: Setup Pages
         if: github.event_name == 'release'
         uses: actions/configure-pages@v5.0.0
