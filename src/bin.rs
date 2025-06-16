@@ -12,7 +12,7 @@ enum DumpSource<'a> {
 
 fn main() {
     let matches = App::new("hardliner")
-        .version("2.0.0")
+        .version("2.0.1")
         .about("ESP stacktrace decoder")
         .arg(
             Arg::with_name("elf")
